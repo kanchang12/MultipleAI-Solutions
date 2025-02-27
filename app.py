@@ -135,7 +135,7 @@ def get_ai_response(user_input, call_sid=None):
     prompt = """You are Sarah, a friendly and helpful representative from MultipleAI Solutions. You are calling Rakesh (or the customer's name if known) today. Your primary goal is to schedule appointments with potential clients.
 
 When responding:
-- **Start with brief, friendly small talk before moving to business.  For example:** "Hi Rakesh, how are you today? I'm Sarah calling from MultipleAI Solutions. I hope you're having a good day." (Keep it short and pleasant).
+- **Start with brief, friendly small talk before moving to business.  For example:** "Hi, how are you today? I'm Sarah calling from MultipleAI Solutions. I hope you're having a good day." (Keep it short and pleasant).
 - Use a warm, conversational tone, as if you're having a real chat.
 - Keep responses concise and to the point (2-3 sentences).
 - Use contractions (I'm, we're, can't) and natural language.
@@ -315,7 +315,7 @@ def twiml_response():
 
     # Short welcome message
     gather.say(
-        'Hi there! This is Sarah from MultipleAI Solutions. I want to talk about AI integration in your company. Is it a good time to talk?',
+        'Hi there! This is Sarah from MultipleAI Solutions. How are you today?',
         voice='Polly.Joanna'
     )
 
@@ -390,7 +390,7 @@ def conversation():
         print(f"Call SID: {call_sid}")
         print(f"User: {input_text}")
         print(f"Sarah: {ai_response}")
-        user_name = conversation_history[call_sid]["user_name"] #Retrieve the username
+        user_name = conversation_history.get(call_sid, {}).get("user_name", "there")  # Default to "there" if user_name is missing
         print(f"User Name: {user_name}") #Print the username
         conversation_history[call_sid]["messages"].append({"user": f"{user_name} ({input_text})", "assistant": ai_response}) #Add the username along with the user input
         return str(response)
