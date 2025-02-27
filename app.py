@@ -392,8 +392,12 @@ def conversation():
         print(f"Sarah: {ai_response}")
         user_name = conversation_history.get(call_sid, {}).get("user_name", "there")  # Default to "there" if user_name is missing
         print(f"User Name: {user_name}") #Print the username
-        conversation_history[call_sid]["messages"].append({"user": f"{user_name} ({input_text})", "assistant": ai_response}) #Add the username along with the user input
-        return str(response)
+        if call_sid not in conversation_history:
+            conversation_history[call_sid] = {"user_name": user_name, "messages": []}  # Initialize if missing
+        
+        conversation_history[call_sid]["messages"].append({"user": f"{user_name} ({input_text})", "assistant": ai_response} )
+
+    return str(response)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=False)
