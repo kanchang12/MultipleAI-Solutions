@@ -344,7 +344,7 @@ def conversation():
         return str(response)
 
     # Default message if no input detected
-    input_text = user_speech if user_speech else "Hello"
+    input_text = user_speech if user_speech else ""
     if digits:
         input_text = f"Button {digits} pressed"
 
