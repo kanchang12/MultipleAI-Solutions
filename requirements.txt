@@ -5,4 +5,5 @@ openai
 twilio
 beautifulsoup4
 Werkzeug
+gunicorn
 requests
