@@ -262,7 +262,7 @@ def call_endpoint():
         return jsonify({'error': 'No phone number provided'})
     return make_call(phone_number, user_name)  # Pass the name to make_call
 
-def make_call(phone_number):
+def make_call(phone_number, user_name=None):
     try:
         # Ensure the phone number is in E.164 format
         if not phone_number.startswith('+'):
