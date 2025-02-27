@@ -274,7 +274,7 @@ def make_call(phone_number):
                 phone_number = '+' + phone_number
 
         # Full URL to your TwiML endpoint - update this with your actual ngrok URL
-        twiml_url = "https://5796-88-98-240-180.ngrok-free.app/twiml"
+        twiml_url = "https://familiar-bernie-onewebonly-45eb6d74.koyeb.app/twiml"
 
         # Make the call
         call = twilio_client.calls.create(
@@ -315,7 +315,7 @@ def twiml_response():
     # Short welcome message
     gather.say(
         'Hi there! This is Sarah from MultipleAI Solutions. I want to talk about AI integration in your company. Is it a good time to talk?',
-        voice='alice'
+        voice='Polly.Joanna'
     )
 
     response.append(gather)
@@ -338,7 +338,7 @@ def conversation():
 
     # Handle hang up requests
     if digits == '9' or any(word in user_speech.lower() for word in ['goodbye', 'bye', 'hang up', 'end call']):
-        response.say("Thank you for your time. Have a great day!", voice='alice')
+        response.say("Thank you for your time. Have a great day!", voice='Polly.Joanna')
         response.hangup()
         return str(response)
 
@@ -378,7 +378,7 @@ def conversation():
     )
 
     # Say the AI response inside the Gather to allow interruption
-    gather.say(ai_response, voice='alice')
+    gather.say(ai_response, voice='Polly.Joanna')
     response.append(gather)
     response.pause(length=1) #small pause for user to interrupt
     final_gather = Gather(input = 'speech dtmf', action = '/conversation', method ='POST', timeout= 5, speechTimeout= 'auto', bargeIn =True)
