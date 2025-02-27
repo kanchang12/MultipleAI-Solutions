@@ -313,7 +313,7 @@ def twiml_response():
 
     # Short welcome message
     gather.say(
-        'Hi there! This is Sarah from MultipleAI Solutions. I want to talk about AI integration in your company. Is it a good time to talk?',
+        'Hi there! This is Sarah from MultipleAI Solutions. How are you today?',
         voice='Polly.Joanna'
     )
 
