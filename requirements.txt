@@ -1,0 +1,8 @@
+Flask
+PyPDF2
+python-docx
+openai
+twilio
+beautifulsoup4
+Werkzeug
+requests
