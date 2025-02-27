@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Q&A Chat</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .content {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Chat widget styles */
+        .chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 400px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .chat-widget.collapsed {
+            height: 60px;
+        }
+        
+        .chat-header {
+            background-color: #0066cc;
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .chat-title {
+            font-weight: bold;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 18px;
+        }
+        
+        .bot-message {
+            background-color: #f0f0f0;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .user-message {
+            background-color: #0066cc;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .chat-input {
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            outline: none;
+        }
+        
+        .send-btn {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            margin-left: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .call-section {
+            margin-top: 20px;
+        }
+
+        .call-section input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: calc(100% - 100px);
+        }
+
+        .call-section button {
+            padding: 10px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        /* Add styles for links in bot messages */
+        .bot-message a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        
+        .bot-message a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <h1>MultipleAI Solutions</h1>
+        <p>Ask questions about your documents through the chat widget or initiate a call.</p>
+
+        <div class="call-section">
+            <h3>Make a Call</h3>
+            <form id="callForm">
+                <input type="tel" id="phoneNumber" placeholder="Enter phone number" required />
+                <button type="submit" id="callBtn">Call</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Chat Widget -->
+    <div class="chat-widget" id="chatWidget">
+        <div class="chat-header" id="chatHeader">
+            <div class="chat-title">Document Q&A</div>
+            <button class="toggle-btn" id="toggleChat">−</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                Hi there! 👋 I'm Sarah from MultipleAI Solutions. How can I help you with AI integration for your business today?
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" class="message-input" id="messageInput" placeholder="Ask a question...">
+            <button class="send-btn" id="sendMessage">➤</button>
+        </div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatWidget = document.getElementById('chatWidget');
+        const chatHeader = document.getElementById('chatHeader');
+        const toggleChat = document.getElementById('toggleChat');
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendMessage = document.getElementById('sendMessage');
+        const callForm = document.getElementById('callForm');
+        const phoneNumberInput = document.getElementById('phoneNumber');
+        const callBtn = document.getElementById('callBtn');
+
+        // Toggle chat widget
+        chatHeader.addEventListener('click', (e) => {
+            if (e.target !== sendMessage) {
+                chatWidget.classList.toggle('collapsed');
+                toggleChat.textContent = chatWidget.classList.contains('collapsed') ? '+' : '−';
+            }
+        });
+
+        // Send message
+        function sendMessageToServer() {
+            const userMessage = messageInput.value.trim();
+            if (userMessage) {
+                appendMessage(userMessage, 'user-message');
+                messageInput.value = '';
+
+                // Add loading indicator
+                const loadingId = 'loading-' + Date.now();
+                appendMessage('Thinking...', 'bot-message', loadingId);
+                
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `message=${encodeURIComponent(userMessage)}`,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove loading message
+                    const loadingElement = document.getElementById(loadingId);
+                    if (loadingElement) {
+                        chatMessages.removeChild(loadingElement);
+                    }
+                    
+                    // Use innerHTML instead of textContent to render HTML links
+                    appendMessageWithHTML(data.response, 'bot-message');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const loadingElement = document.getElementById(loadingId);
+                    if (loadingElement) {
+                        chatMessages.removeChild(loadingElement);
+                    }
+                    appendMessage('Sorry, there was an error processing your request.', 'bot-message');
+                });
+            }
+        }
+
+        sendMessage.addEventListener('click', sendMessageToServer);
+
+        // Send message on pressing Enter key
+        messageInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessageToServer();
+            }
+        });
+
+        // Append message to chat (plain text)
+        function appendMessage(message, className, id = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.textContent = message;
+            if (id) {
+                messageDiv.id = id;
+            }
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to the latest message
+        }
+        
+        // Append message with HTML support (for links)
+        function appendMessageWithHTML(message, className, id = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.innerHTML = message; // Use innerHTML instead of textContent
+            if (id) {
+                messageDiv.id = id;
+            }
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to the latest message
+        }
+
+        // Handle call form submission
+        callForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const phoneNumber = phoneNumberInput.value.trim();
+            if (phoneNumber) {
+                // Disable the call button and show loading
+                callBtn.disabled = true;
+                callBtn.textContent = 'Calling...';
+                
+                fetch('/call', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `phone_number=${encodeURIComponent(phoneNumber)}`,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable the call button
+                    callBtn.disabled = false;
+                    callBtn.textContent = 'Call';
+                    
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Call initiated successfully!');
+                        appendMessage(`I've initiated a call to ${phoneNumber}. You should receive it shortly.`, 'bot-message');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    callBtn.disabled = false;
+                    callBtn.textContent = 'Call';
+                    alert('Error making the call. Please try again.');
+                });
+            } else {
+                alert('Please enter a phone number.');
+            }
+        });
+    });
+</script>
+</body>
+</html>
