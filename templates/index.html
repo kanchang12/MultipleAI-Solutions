@@ -155,7 +155,7 @@
         <div class="call-section">
             <h3>Make a Call</h3>
             <form id="callForm">
-                <input type="text" id="userName" placeholder="Enter customer first name (optional)" />  <input type="tel" id="phoneNumber" placeholder="Enter phone number" required />
+                <input type="tel" id="phoneNumber" placeholder="Enter phone number" required />
                 <button type="submit" id="callBtn">Call</button>
             </form>
         </div>
@@ -214,7 +214,7 @@
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: `phone_number=${encodeURIComponent(phoneNumber)}&user_name=${encodeURIComponent(userName)}`, // Include the name
+                    body: `message=${encodeURIComponent(userMessage)}`,
                 })
                 .then(response => response.json())
                 .then(data => {
