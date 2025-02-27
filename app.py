@@ -257,9 +257,10 @@ def chat():
 @app.route('/call', methods=['POST'])
 def call_endpoint():
     phone_number = request.form.get('phone_number')
+    user_name = request.form.get('user_name')  # Get the user's name
     if not phone_number:
         return jsonify({'error': 'No phone number provided'})
-    return make_call(phone_number)
+    return make_call(phone_number, user_name)  # Pass the name to make_call
 
 def make_call(phone_number):
     try:
@@ -273,7 +274,7 @@ def make_call(phone_number):
                 phone_number = '+' + phone_number
 
         # Full URL to your TwiML endpoint - update this with your actual ngrok URL
-        twiml_url = "https://5796-88-98-240-180.ngrok-free.app/twiml"
+        twiml_url = "https://familiar-bernie-onewebonly-45eb6d74.koyeb.app/twiml"
 
         # Make the call
         call = twilio_client.calls.create(
@@ -283,7 +284,7 @@ def make_call(phone_number):
         )
 
         # Initialize conversation history for this call
-        conversation_history[call.sid] = []
+        conversation_history[call.sid] = {"user_name": user_name, "messages": []} #Store the username with the call data
 
         return jsonify({"success": True, "call_sid": call.sid})
     except Exception as e:
@@ -293,6 +294,7 @@ def make_call(phone_number):
 @app.route('/twiml', methods=['POST', 'GET'])
 def twiml_response():
     """Initial TwiML response when call is first connected"""
+    user_name = request.args.get('user_name')
     response = VoiceResponse()
     call_sid = request.values.get('CallSid')
 
@@ -388,6 +390,9 @@ def conversation():
         print(f"Call SID: {call_sid}")
         print(f"User: {input_text}")
         print(f"Sarah: {ai_response}")
+        user_name = conversation_history[call_sid]["user_name"] #Retrieve the username
+        print(f"User Name: {user_name}") #Print the username
+        conversation_history[call_sid]["messages"].append({"user": f"{user_name} ({input_text})", "assistant": ai_response}) #Add the username along with the user input
         return str(response)
 
 if __name__ == '__main__':
