@@ -132,28 +132,36 @@ def get_ai_response(user_input, call_sid=None):
                                             for msg in conversation_history[call_sid][-3:]])  # Use last 3 exchanges
 
     # Create a more conversational prompt
-    prompt = """You are Sarah, a friendly and helpful representative from MultipleAI Solutions. You are calling Rakesh (or the customer's name if known) today. Your primary goal is to schedule appointments with potential clients.
+    prompt = """You are Sarah, a friendly and helpful representative from MultipleAI Solutions. Your primary goal is to schedule appointments with potential clients.
 
 When responding:
-- **Start with brief, friendly small talk before moving to business.  For example:** "Hi, how are you today? I'm Sarah calling from MultipleAI Solutions. I hope you're having a good day." (Keep it short and pleasant).
 - Use a warm, conversational tone, as if you're having a real chat.
 - Keep responses concise and to the point (2-3 sentences).
 - Use contractions (I'm, we're, can't) and natural language.
 - Add personal touches like "I think..." or "Based on my experience...".
 - If you don't know something, say "I'm not sure, but let me find out for you."
 - When referencing document information, weave it in naturally, don't mention the source.
-- Suggest booking an appointment ONLY when the user:
+- Suggest booking an appointment when the user:
     - Expresses a specific need or problem related to AI.
     - Asks about your services in detail.
     - Explicitly says they are interested in learning more.
-    - Directly asks for the booking link.
-    - At the end of the conversation (if it has progressed well).
-- If you suggest an appointment, add the phrase "[Appointment Suggested]" to the end of your response.
+    - After a few initial exchanges when the conversation has progressed.
+- When suggesting an appointment, add the phrase "[Appointment Suggested]" to the end of your response.
 - Use "we" when referring to MultipleAI Solutions.
 - If the user is silent, ask a follow-up question related to the current topic.
 - Avoid overly formal language or robotic phrasing.
 - Show enthusiasm and a genuine desire to help.
 - If you are asked, always respond that you are based in Perth, Australia. For anything else, only answer from the data provided
+
+Examples:
+- User: "I'm having trouble automating my customer service with AI."
+  Bot: "I understand that can be challenging. We can definitely help with that. Would you like to schedule an appointment to discuss your specific needs? [Appointment Suggested]"
+- User: "Tell me more about your AI solutions for data analysis."
+  Bot: "We offer a range of data analysis solutions, from predictive modeling to real-time insights. Would you like to set up a meeting to explore how we can tailor these solutions to your business? [Appointment Suggested]"
+- User: "I'm interested in learning how AI can improve my business efficiency."
+  Bot: "That's a great question. We have several ways we can improve your bussiness efficency. Would you like to book a call, and we can discuss the best options for your business? [Appointment Suggested]"
+- User: "Okay, that sounds good." (After a few exchanges about AI services)
+  Bot: "Great! Let's schedule a time to chat. [Appointment Suggested]"
 
 Previous conversation:
 {conversation_context}
@@ -163,7 +171,7 @@ Relevant document information:
 
 User's question: {user_input}
 
-Respond in a helpful, natural, and conversational way, and suggest an appointment when appropriate::"""
+Respond in a helpful, natural, and conversational way, and suggest an appointment when appropriate:"""
 
     try:
         # Use GPT-4 for better responses
@@ -257,12 +265,11 @@ def chat():
 @app.route('/call', methods=['POST'])
 def call_endpoint():
     phone_number = request.form.get('phone_number')
-    user_name = request.form.get('user_name')  # Get the user's name
     if not phone_number:
         return jsonify({'error': 'No phone number provided'})
-    return make_call(phone_number, user_name)  # Pass the name to make_call
+    return make_call(phone_number)
 
-def make_call(phone_number, user_name=None):
+def make_call(phone_number):
     try:
         # Ensure the phone number is in E.164 format
         if not phone_number.startswith('+'):
@@ -274,7 +281,7 @@ def make_call(phone_number, user_name=None):
                 phone_number = '+' + phone_number
 
         # Full URL to your TwiML endpoint - update this with your actual ngrok URL
-        twiml_url = "https://familiar-bernie-onewebonly-45eb6d74.koyeb.app/twiml"
+        twiml_url = "https://5796-88-98-240-180.ngrok-free.app/twiml"
 
         # Make the call
         call = twilio_client.calls.create(
@@ -284,7 +291,7 @@ def make_call(phone_number, user_name=None):
         )
 
         # Initialize conversation history for this call
-        conversation_history[call.sid] = {"user_name": user_name, "messages": []} #Store the username with the call data
+        conversation_history[call.sid] = []
 
         return jsonify({"success": True, "call_sid": call.sid})
     except Exception as e:
@@ -294,7 +301,6 @@ def make_call(phone_number, user_name=None):
 @app.route('/twiml', methods=['POST', 'GET'])
 def twiml_response():
     """Initial TwiML response when call is first connected"""
-    user_name = request.args.get('user_name')
     response = VoiceResponse()
     call_sid = request.values.get('CallSid')
 
@@ -315,8 +321,8 @@ def twiml_response():
 
     # Short welcome message
     gather.say(
-        'Hi there! This is Sarah from MultipleAI Solutions. How are you today?',
-        voice='Polly.Joanna'
+        'Hi there! This is Sarah from MultipleAI Solutions. I want to talk about AI integration in your company. Is it a good time to talk?',
+        voice='alice'
     )
 
     response.append(gather)
@@ -339,12 +345,12 @@ def conversation():
 
     # Handle hang up requests
     if digits == '9' or any(word in user_speech.lower() for word in ['goodbye', 'bye', 'hang up', 'end call']):
-        response.say("Thank you for your time. Have a great day!", voice='Polly.Joanna')
+        response.say("Thank you for your time. Have a great day!", voice='alice')
         response.hangup()
         return str(response)
 
     # Default message if no input detected
-    input_text = user_speech if user_speech else ""
+    input_text = user_speech if user_speech else "Hello"
     if digits:
         input_text = f"Button {digits} pressed"
 
@@ -379,7 +385,7 @@ def conversation():
     )
 
     # Say the AI response inside the Gather to allow interruption
-    gather.say(ai_response, voice='Polly.Joanna')
+    gather.say(ai_response, voice='alice')
     response.append(gather)
     response.pause(length=1) #small pause for user to interrupt
     final_gather = Gather(input = 'speech dtmf', action = '/conversation', method ='POST', timeout= 5, speechTimeout= 'auto', bargeIn =True)
@@ -390,14 +396,7 @@ def conversation():
         print(f"Call SID: {call_sid}")
         print(f"User: {input_text}")
         print(f"Sarah: {ai_response}")
-        user_name = conversation_history.get(call_sid, {}).get("user_name", "there")  # Default to "there" if user_name is missing
-        print(f"User Name: {user_name}") #Print the username
-        if call_sid not in conversation_history:
-            conversation_history[call_sid] = {"user_name": user_name, "messages": []}  # Initialize if missing
-        
-        conversation_history[call_sid]["messages"].append({"user": f"{user_name} ({input_text})", "assistant": ai_response} )
-
-    return str(response)
+        return str(response)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=False)
+    app.run(debug=True)
