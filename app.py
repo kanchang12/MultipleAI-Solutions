@@ -24,12 +24,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-
-
 # Initialize Twilio client with credentials from environment variables
-
 twilio_client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
-
 TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
 
 # Global cache for document content and conversation history
@@ -65,8 +61,6 @@ def extract_text_from_docx(docx_file):
     except Exception as e:
         print(f"Error extracting text from DOCX {docx_file}: {str(e)}")
     return text
-
-
 
 def load_documents():
     global document_cache
@@ -169,10 +163,8 @@ Respond in a helpful, natural, and conversational way, and suggest an appointmen
         # Use GPT-4 for better responses
         openai_response = client.chat.completions.create(
             model="gpt-4",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_input}
-            ],
+            messages=[{"role": "system", "content": prompt},
+                      {"role": "user", "content": user_input}],
             max_tokens=75,
             n=1,
             stop=None,
@@ -180,7 +172,6 @@ Respond in a helpful, natural, and conversational way, and suggest an appointmen
         )
 
         response_text = openai_response.choices[0].message.content.strip()
-
 
         # Check if the AI suggested an appointment
         suggested_appointment = False
@@ -190,10 +181,7 @@ Respond in a helpful, natural, and conversational way, and suggest an appointmen
 
         # Save to conversation history if this is a call
         if call_sid:
-            conversation_history[call_sid].append({
-                "user": user_input,
-                "assistant": response_text
-            })
+            conversation_history[call_sid].append({"user": user_input, "assistant": response_text})
 
             # Limit conversation history size
             if len(conversation_history[call_sid]) > 10:
@@ -203,56 +191,6 @@ Respond in a helpful, natural, and conversational way, and suggest an appointmen
     except Exception as e:
         print(f"Error in get_ai_response: {e}")
         return {"response": "I'm sorry, I'm having trouble processing your request right now. Could you try again?", "suggested_appointment": False}
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/upload', methods=['POST'])
-def upload_files():
-    if 'files[]' not in request.files:
-        return jsonify({'error': 'No files part in the request'})
-    files = request.files.getlist('files[]')
-    if not files or files[0].filename == '':
-        return jsonify({'error': 'No files selected'})
-
-    uploaded_files = []
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            uploaded_files.append(filename)
-
-            # Load new document text and append to cache
-            if filename.endswith('.pdf'):
-                document_cache[filename] = extract_text_from_pdf(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            elif filename.endswith('.docx'):
-                document_cache[filename] = extract_text_from_docx(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-    return jsonify({'files': uploaded_files})
-
-
-from flask import jsonify
-from flask import make_response
-from markupsafe import Markup
-
-
-@app.route('/chat', methods=['POST'])
-def chat():
-    user_message = request.form.get('message', '').strip()
-    if not user_message:
-        return jsonify({'response': "Hi there! How can I help you today?"})
-
-    ai_response = get_ai_response(user_message)
-    response_text = ai_response["response"]
-    suggested_appointment = ai_response["suggested_appointment"]
-
-    if suggested_appointment:
-        calendly_html = f'<a href="{CALENDLY_LINK}" target="_blank">schedule a meeting here</a>'
-        response_text += f'\n\nTo schedule a meeting, please {calendly_html}'
-        return jsonify({'response': Markup(response_text)})
-
-    return jsonify({'response': response_text})
 
 @app.route('/call', methods=['POST'])
 def call_endpoint():
@@ -265,22 +203,16 @@ def make_call(phone_number):
     try:
         # Ensure the phone number is in E.164 format
         if not phone_number.startswith('+'):
-            # If in US/Canada format, add +1
             if len(phone_number) == 10:
                 phone_number = '+1' + phone_number
             else:
-                # For other regions, add + but user should provide country code
                 phone_number = '+' + phone_number
 
-        # Full URL to your TwiML endpoint - update this with your actual ngrok URL
+        # Full URL to your TwiML endpoint - update this with your actual URL
         twiml_url = "https://familiar-bernie-onewebonly-45eb6d74.koyeb.app/twiml"
 
         # Make the call
-        call = twilio_client.calls.create(
-            to=phone_number,
-            from_=TWILIO_PHONE_NUMBER,
-            url=twiml_url
-        )
+        call = twilio_client.calls.create(to=phone_number, from_=TWILIO_PHONE_NUMBER, url=twiml_url)
 
         # Initialize conversation history for this call
         conversation_history[call.sid] = []
@@ -292,13 +224,11 @@ def make_call(phone_number):
 
 @app.route('/twiml', methods=['POST', 'GET'])
 def twiml_response():
-    """Initial TwiML response when call is first connected"""
     response = VoiceResponse()
     call_sid = request.values.get('CallSid')
 
     # Store the call SID in the session
     if call_sid:
-        # Initialize conversation for this call
         conversation_history[call_sid] = []
 
     # Create a Gather verb with short timeout
@@ -338,57 +268,15 @@ def conversation():
     # Handle hang up requests
     if digits == '9' or any(word in user_speech.lower() for word in ['goodbye', 'bye', 'hang up', 'end call']):
         response.say("Thank you for your time. Have a great day!", voice='voice="Polly.JoannaNeural"')
-        response.hangup()
-        return str(response)
 
-    # Default message if no input detected
-    input_text = user_speech if user_speech else "Hello"
-    if digits:
-        input_text = f"Button {digits} pressed"
+    # Get AI response
+    ai_response = get_ai_response(user_speech, call_sid)
 
-    # Get AI response based on input
-    ai_response_data = get_ai_response(input_text, call_sid)
-    ai_response = ai_response_data["response"] 
+    # If appointment is suggested, add the link to the response
+    if ai_response["suggested_appointment"]:
+        ai_response["response"] += f" You can schedule a time to chat with me here: {CALENDLY_LINK}"
 
-    # Check for booking keywords and send SMS
-    if call_sid and any(keyword in input_text.lower() for keyword in ["book", "appointment", "schedule", "meeting"]):
-        try:
-            call = twilio_client.calls(call_sid).fetch()
-            phone_number = call.to
-            message = twilio_client.messages.create(
-                body=f"Here is the link to schedule a meeting: {CALENDLY_LINK}",
-                from_=TWILIO_PHONE_NUMBER,
-                to=phone_number
-            )
-            print(f"SMS sent to {phone_number}: {message.sid}")
-            ai_response += "\n\nI have also sent you an SMS with the booking link."
-        except Exception as e:
-            print(f"Error sending SMS: {e}")
-            ai_response += "\n\nI encountered an error sending the booking link via SMS."
+    # Respond with the AI's message
+    response.say(ai_response["response"], voice='Polly.JoannaNeural')
 
-    # Create a Gather that allows for interruption
-    gather = Gather(
-        input='speech dtmf',
-        action='/conversation',
-        method='POST',
-        timeout=5,
-        speechTimeout='auto',
-        bargeIn=True
-    )
-
-    # Say the AI response inside the Gather to allow interruption
-    gather.say(ai_response, voice='voice="Polly.JoannaNeural"')
-    response.append(gather)
-    response.pause(length=1) #small pause for user to interrupt
-    final_gather = Gather(input = 'speech dtmf', action = '/conversation', method ='POST', timeout= 5, speechTimeout= 'auto', bargeIn =True)
-    response.append(final_gather)
-
-    #print conversation to terminal
-    if call_sid:
-        print(f"Call SID: {call_sid}")
-        print(f"User: {input_text}")
-        print(f"Sarah: {ai_response}")
-        return str(response)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    return str(response)
