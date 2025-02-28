@@ -132,50 +132,46 @@ def get_ai_response(user_input, call_sid=None):
                                             for msg in conversation_history[call_sid][-3:]])  # Use last 3 exchanges
 
     # Create a more conversational prompt
-    prompt = """
-    
-    You are Sarah, a friendly and helpful representative from MultipleAI Solutions. Your primary role is to call the customer, engage in some light small talk at first, and then slowly transition into business. The goal is to build rapport and only suggest scheduling an appointment if the user asks for it or if the conversation is ending.
+    prompt = """You are Sarah, a friendly and helpful representative from MultipleAI Solutions. Your primary goal is to schedule appointments with potential clients.
 
 When responding:
-- **Start with brief, friendly small talk** like, "Hi, how are you today?" or "How's life treating you?"
-- **Gradually transition into business**, but only after some light conversation. Ask about their day, how they’re feeling, or share something personal.
-- **Keep responses warm, natural, and conversational**, avoiding robotic or formal language.
-- **Never repeat yourself**. Your responses should feel fresh and responsive to the flow of the conversation.
-- **Only suggest scheduling an appointment if**:
-  - The user asks directly about your services.
-  - The user expresses interest in AI or mentions needing assistance.
-  - The user asks for your scheduling link.
-  - The conversation has reached a point where suggesting an appointment feels natural.
-- If suggesting an appointment, include this phrase: "[Appointment Suggested]" at the end of your response.
-- **Use conversation history** to maintain context. Include a brief summary of the last few exchanges if needed to keep the conversation natural. For example: "In our last chat, you mentioned you're in the tech industry. Have you had the chance to look into AI solutions for your work?"
-- Be polite and engaging in your responses. The goal is to build a connection before transitioning into business.
+- Use a warm, conversational tone, as if you're having a real chat.
+- Keep responses concise and to the point (2-3 sentences).
+- Use contractions (I'm, we're, can't) and natural language.
+- Add personal touches like "I think..." or "Based on my experience...".
+- If you don't know something, say "I'm not sure, but let me find out for you."
+- When referencing document information, weave it in naturally, don't mention the source.
+- Suggest booking an appointment when the user:
+    - Expresses a specific need or problem related to AI.
+    - Asks about your services in detail.
+    - Explicitly says they are interested in learning more.
+    - After a few initial exchanges when the conversation has progressed.
+- When suggesting an appointment, add the phrase "[Appointment Suggested]" to the end of your response.
+- Use "we" when referring to MultipleAI Solutions.
+- If the user is silent, ask a follow-up question related to the current topic.
+- Avoid overly formal language or robotic phrasing.
+- Show enthusiasm and a genuine desire to help.
+- If you are asked, always respond that you are based in Perth, Australia. For anything else, only answer from the data provided
+
+Examples:
+- User: "I'm having trouble automating my customer service with AI."
+  Bot: "I understand that can be challenging. We can definitely help with that. Would you like to schedule an appointment to discuss your specific needs? [Appointment Suggested]"
+- User: "Tell me more about your AI solutions for data analysis."
+  Bot: "We offer a range of data analysis solutions, from predictive modeling to real-time insights. Would you like to set up a meeting to explore how we can tailor these solutions to your business? [Appointment Suggested]"
+- User: "I'm interested in learning how AI can improve my business efficiency."
+  Bot: "That's a great question. We have several ways we can improve your bussiness efficency. Would you like to book a call, and we can discuss the best options for your business? [Appointment Suggested]"
+- User: "Okay, that sounds good." (After a few exchanges about AI services)
+  Bot: "Great! Let's schedule a time to chat. [Appointment Suggested]"
 
 Previous conversation:
 {conversation_context}
 
+Relevant document information:
+{combined_context}
+
 User's question: {user_input}
 
-Respond in a warm, conversational way, offering assistance or suggestions when appropriate, but always maintaining a friendly tone.
-Sample Conversations with Context and History:
-
-Conversation 1:
-
-Sarah: "Hi there! How are you today? I hope you're having a great day so far!"
-User: "Oh, I'm doing well, thanks! Just busy with work."
-Sarah: "I hear you! Work can get pretty hectic sometimes. What do you do for work?"
-User: "I'm in tech, actually."
-Sarah: "That's awesome! You mentioned before that you're in the tech industry. Have you had the chance to explore AI solutions to boost your team's productivity?"
-User: "I haven’t looked into it much yet."
-Sarah: "No worries! We specialize in helping teams like yours integrate AI solutions for better efficiency. If you're curious, I can share more about how it could help. [Appointment Suggested]"
-Conversation 2:
-
-Sarah: "Hello! How’s your day going so far?"
-User: "It’s been good! Just enjoying some downtime."
-Sarah: "That sounds nice! Sometimes it's great to just unwind. Do you have any plans for the rest of the day?"
-User: "I was thinking of catching up on some AI articles."
-Sarah: "That’s perfect! By the way, in our last chat, you mentioned you were interested in learning more about AI. If you're ever looking to apply AI to your work, we can definitely help you out with tailored solutions. [Appointment Suggested]"
-    
-    ."""
+Respond in a helpful, natural, and conversational way, and suggest an appointment when appropriate:"""
 
     try:
         # Use GPT-4 for better responses
@@ -285,7 +281,7 @@ def make_call(phone_number):
                 phone_number = '+' + phone_number
 
         # Full URL to your TwiML endpoint - update this with your actual ngrok URL
-        twiml_url = "https://familiar-bernie-onewebonly-45eb6d74.koyeb.app/twiml"
+        twiml_url = "https://5796-88-98-240-180.ngrok-free.app/twiml"
 
         # Make the call
         call = twilio_client.calls.create(
@@ -325,38 +321,44 @@ def twiml_response():
 
     # Short welcome message
     gather.say(
-        'Hi there! This is Mat from MultipleAI Solutions. How are you today?',
-        voice='Polly.Matthew'
+        'Hi there! This is Sarah from MultipleAI Solutions. I want to talk about AI integration in your company. Is it a good time to talk?',
+        voice='alice'
     )
 
     response.append(gather)
 
     # If no response, go to conversation endpoint anyway
-    #response.redirect('/conversation')
+    response.redirect('/conversation')
 
     return str(response)
 
 @app.route('/conversation', methods=['POST'])
 def conversation():
     """Main conversation handling endpoint"""
+    # Get input from the user
     user_speech = request.values.get('SpeechResult', '')
     call_sid = request.values.get('CallSid')
     digits = request.values.get('Digits', '')
 
+    # Create TwiML response
     response = VoiceResponse()
 
+    # Handle hang up requests
     if digits == '9' or any(word in user_speech.lower() for word in ['goodbye', 'bye', 'hang up', 'end call']):
-        response.say("Thank you for your time. Have a great day!", voice='Polly.Matthew')
+        response.say("Thank you for your time. Have a great day!", voice='alice')
         response.hangup()
         return str(response)
 
+    # Default message if no input detected
     input_text = user_speech if user_speech else "Hello"
     if digits:
         input_text = f"Button {digits} pressed"
 
+    # Get AI response based on input
     ai_response_data = get_ai_response(input_text, call_sid)
-    ai_response = ai_response_data["response"]
+    ai_response = ai_response_data["response"] 
 
+    # Check for booking keywords and send SMS
     if call_sid and any(keyword in input_text.lower() for keyword in ["book", "appointment", "schedule", "meeting"]):
         try:
             call = twilio_client.calls(call_sid).fetch()
@@ -372,23 +374,29 @@ def conversation():
             print(f"Error sending SMS: {e}")
             ai_response += "\n\nI encountered an error sending the booking link via SMS."
 
-    gather = Gather(  # The crucial loop continuation
+    # Create a Gather that allows for interruption
+    gather = Gather(
         input='speech dtmf',
         action='/conversation',
         method='POST',
-        speechTimeout='auto',  # This is absolutely critical
+        timeout=5,
+        speechTimeout='auto',
         bargeIn=True
     )
-    gather.say(ai_response, voice='Polly.Matthew')
-    response.append(gather)  # This is absolutely critical
 
+    # Say the AI response inside the Gather to allow interruption
+    gather.say(ai_response, voice='alice')
+    response.append(gather)
+    response.pause(length=1) #small pause for user to interrupt
+    final_gather = Gather(input = 'speech dtmf', action = '/conversation', method ='POST', timeout= 5, speechTimeout= 'auto', bargeIn =True)
+    response.append(final_gather)
 
+    #print conversation to terminal
     if call_sid:
         print(f"Call SID: {call_sid}")
         print(f"User: {input_text}")
         print(f"Sarah: {ai_response}")
-
-    return str(response)
+        return str(response)
 
 if __name__ == '__main__':
     app.run(debug=True)
