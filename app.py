@@ -314,7 +314,7 @@ def twiml_response():
     # Short welcome message
     gather.say(
         'Hi there! This is Sarah from MultipleAI Solutions. How are you today?',
-        voice='alice'
+        voice='voice="Polly.JoannaNeural"'
     )
 
     response.append(gather)
@@ -324,7 +324,7 @@ def twiml_response():
 
     return str(response)
 
-@app.route('/conversation', methods=['POST'])
+@app.route('/conversation', methods=['POST'], ['GET'])
 def conversation():
     """Main conversation handling endpoint"""
     # Get input from the user
@@ -337,7 +337,7 @@ def conversation():
 
     # Handle hang up requests
     if digits == '9' or any(word in user_speech.lower() for word in ['goodbye', 'bye', 'hang up', 'end call']):
-        response.say("Thank you for your time. Have a great day!", voice='alice')
+        response.say("Thank you for your time. Have a great day!", voice='voice="Polly.JoannaNeural"')
         response.hangup()
         return str(response)
 
@@ -377,7 +377,7 @@ def conversation():
     )
 
     # Say the AI response inside the Gather to allow interruption
-    gather.say(ai_response, voice='alice')
+    gather.say(ai_response, voice='voice="Polly.JoannaNeural"')
     response.append(gather)
     response.pause(length=1) #small pause for user to interrupt
     final_gather = Gather(input = 'speech dtmf', action = '/conversation', method ='POST', timeout= 5, speechTimeout= 'auto', bargeIn =True)
