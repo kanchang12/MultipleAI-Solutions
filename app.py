@@ -15,7 +15,7 @@ import time
 app = Flask(__name__)
 
 # Configure upload folder
-UPLOAD_FOLDER = 
+UPLOAD_FOLDER = 'uploaded_files'
 ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
