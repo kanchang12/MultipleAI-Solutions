@@ -324,7 +324,7 @@ def twiml_response():
 
     return str(response)
 
-@app.route('/conversation', methods=['POST'], ['GET'])
+,@app.route('/conversation', methods=['GET', 'POST'])
 def conversation():
     """Main conversation handling endpoint"""
     # Get input from the user
