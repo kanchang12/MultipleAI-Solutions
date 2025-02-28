@@ -325,14 +325,14 @@ def twiml_response():
 
     # Short welcome message
     gather.say(
-        'Hi there! This is Sarah from MultipleAI Solutions. How are you today?',
+        'Hi there! This is Mat from MultipleAI Solutions. How are you today?',
         voice='Polly.Matthew'
     )
 
     response.append(gather)
 
     # If no response, go to conversation endpoint anyway
-    response.redirect('/conversation')
+    #response.redirect('/conversation')
 
     return str(response)
 
