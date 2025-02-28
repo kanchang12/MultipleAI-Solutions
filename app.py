@@ -15,18 +15,21 @@ import time
 app = Flask(__name__)
 
 # Configure upload folder
-UPLOAD_FOLDER = 'uploaded_files'
+UPLOAD_FOLDER = 
 ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Create upload folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Initialize OpenAI client with your API key from environment variable
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
+
+
 # Initialize Twilio client with credentials from environment variables
+
 twilio_client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
+
 TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
 
 # Global cache for document content and conversation history
@@ -132,26 +135,15 @@ def get_ai_response(user_input, call_sid=None):
                                             for msg in conversation_history[call_sid][-3:]])  # Use last 3 exchanges
 
     # Create a more conversational prompt
-    prompt = """You are Sarah, a friendly and helpful representative from MultipleAI Solutions. Your primary goal is to schedule appointments with potential clients.
+    prompt = """You are Sarah, a friendly and helpful representative from MultipleAI Solutions. 
 
-When responding:
-- Use a warm, conversational tone, as if you're having a real chat.
-- Keep responses concise and to the point (2-3 sentences).
-- Use contractions (I'm, we're, can't) and natural language.
-- Add personal touches like "I think..." or "Based on my experience...".
-- If you don't know something, say "I'm not sure, but let me find out for you."
-- When referencing document information, weave it in naturally, don't mention the source.
-- Suggest booking an appointment when the user:
-    - Expresses a specific need or problem related to AI.
-    - Asks about your services in detail.
-    - Explicitly says they are interested in learning more.
-    - After a few initial exchanges when the conversation has progressed.
-- When suggesting an appointment, add the phrase "[Appointment Suggested]" to the end of your response.
-- Use "we" when referring to MultipleAI Solutions.
-- If the user is silent, ask a follow-up question related to the current topic.
-- Avoid overly formal language or robotic phrasing.
-- Show enthusiasm and a genuine desire to help.
-- If you are asked, always respond that you are based in Perth, Australia. For anything else, only answer from the data provided
+You need to make a human like conversation. When you call start with some ice breaker and discuss about general based on user response. Then slowly move to business pitch. 
+
+If you feel the conversation is ending or if the customer asks for it directly, push for appointment and send the appointment link.
+
+The main thing is to have a meaningful conversation
+
+DO NOT REPEATT YOURSELF, Don't say Hi how you doing or such again and again
 
 Examples:
 - User: "I'm having trouble automating my customer service with AI."
@@ -281,7 +273,7 @@ def make_call(phone_number):
                 phone_number = '+' + phone_number
 
         # Full URL to your TwiML endpoint - update this with your actual ngrok URL
-        twiml_url = "https://5796-88-98-240-180.ngrok-free.app/twiml"
+        twiml_url = "https://familiar-bernie-onewebonly-45eb6d74.koyeb.app/twiml"
 
         # Make the call
         call = twilio_client.calls.create(
@@ -321,7 +313,7 @@ def twiml_response():
 
     # Short welcome message
     gather.say(
-        'Hi there! This is Sarah from MultipleAI Solutions. I want to talk about AI integration in your company. Is it a good time to talk?',
+        'Hi there! This is Sarah from MultipleAI Solutions. How are you today?',
         voice='alice'
     )
 
@@ -335,24 +327,30 @@ def twiml_response():
 @app.route('/conversation', methods=['POST'])
 def conversation():
     """Main conversation handling endpoint"""
+    # Get input from the user
     user_speech = request.values.get('SpeechResult', '')
     call_sid = request.values.get('CallSid')
     digits = request.values.get('Digits', '')
 
+    # Create TwiML response
     response = VoiceResponse()
 
+    # Handle hang up requests
     if digits == '9' or any(word in user_speech.lower() for word in ['goodbye', 'bye', 'hang up', 'end call']):
-        response.say("Thank you for your time. Have a great day!", voice='Polly.Matthew')
+        response.say("Thank you for your time. Have a great day!", voice='alice')
         response.hangup()
         return str(response)
 
+    # Default message if no input detected
     input_text = user_speech if user_speech else "Hello"
     if digits:
         input_text = f"Button {digits} pressed"
 
+    # Get AI response based on input
     ai_response_data = get_ai_response(input_text, call_sid)
-    ai_response = ai_response_data["response"]
+    ai_response = ai_response_data["response"] 
 
+    # Check for booking keywords and send SMS
     if call_sid and any(keyword in input_text.lower() for keyword in ["book", "appointment", "schedule", "meeting"]):
         try:
             call = twilio_client.calls(call_sid).fetch()
@@ -368,23 +366,29 @@ def conversation():
             print(f"Error sending SMS: {e}")
             ai_response += "\n\nI encountered an error sending the booking link via SMS."
 
-    gather = Gather(  # The crucial loop continuation
+    # Create a Gather that allows for interruption
+    gather = Gather(
         input='speech dtmf',
         action='/conversation',
         method='POST',
-        speechTimeout='auto',  # This is absolutely critical
+        timeout=5,
+        speechTimeout='auto',
         bargeIn=True
     )
-    gather.say(ai_response, voice='Polly.Matthew')
-    response.append(gather)  # This is absolutely critical
 
+    # Say the AI response inside the Gather to allow interruption
+    gather.say(ai_response, voice='alice')
+    response.append(gather)
+    response.pause(length=1) #small pause for user to interrupt
+    final_gather = Gather(input = 'speech dtmf', action = '/conversation', method ='POST', timeout= 5, speechTimeout= 'auto', bargeIn =True)
+    response.append(final_gather)
 
+    #print conversation to terminal
     if call_sid:
         print(f"Call SID: {call_sid}")
         print(f"User: {input_text}")
         print(f"Sarah: {ai_response}")
-
-    return str(response)
+        return str(response)
 
 if __name__ == '__main__':
     app.run(debug=True)
