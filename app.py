@@ -339,30 +339,24 @@ def twiml_response():
 @app.route('/conversation', methods=['POST'])
 def conversation():
     """Main conversation handling endpoint"""
-    # Get input from the user
     user_speech = request.values.get('SpeechResult', '')
     call_sid = request.values.get('CallSid')
     digits = request.values.get('Digits', '')
 
-    # Create TwiML response
     response = VoiceResponse()
 
-    # Handle hang up requests
     if digits == '9' or any(word in user_speech.lower() for word in ['goodbye', 'bye', 'hang up', 'end call']):
         response.say("Thank you for your time. Have a great day!", voice='Polly.Matthew')
         response.hangup()
         return str(response)
 
-    # Default message if no input detected
     input_text = user_speech if user_speech else "Hello"
     if digits:
         input_text = f"Button {digits} pressed"
 
-    # Get AI response based on input
     ai_response_data = get_ai_response(input_text, call_sid)
-    ai_response = ai_response_data["response"] 
+    ai_response = ai_response_data["response"]
 
-    # Check for booking keywords and send SMS
     if call_sid and any(keyword in input_text.lower() for keyword in ["book", "appointment", "schedule", "meeting"]):
         try:
             call = twilio_client.calls(call_sid).fetch()
@@ -378,29 +372,23 @@ def conversation():
             print(f"Error sending SMS: {e}")
             ai_response += "\n\nI encountered an error sending the booking link via SMS."
 
-    # Create a Gather that allows for interruption
-    gather = Gather(
+    gather = Gather(  # The crucial loop continuation
         input='speech dtmf',
         action='/conversation',
         method='POST',
-        timeout=5,
-        speechTimeout='auto',
+        speechTimeout='auto',  # This is absolutely critical
         bargeIn=True
     )
-
-    # Say the AI response inside the Gather to allow interruption
     gather.say(ai_response, voice='Polly.Matthew')
-    response.append(gather)
-    response.pause(length=1) #small pause for user to interrupt
-    final_gather = Gather(input = 'speech dtmf', action = '/conversation', method ='POST', timeout= 5, speechTimeout= 'auto', bargeIn =True)
-    response.append(final_gather)
+    response.append(gather)  # This is absolutely critical
 
-    #print conversation to terminal
+
     if call_sid:
         print(f"Call SID: {call_sid}")
         print(f"User: {input_text}")
         print(f"Sarah: {ai_response}")
-        return str(response)
+
+    return str(response)
 
 if __name__ == '__main__':
     app.run(debug=True)
